@@ -18,24 +18,26 @@ class NewRecipe extends React.Component {
     this.state = {
       newName: '',
       newIngredients: '',
-      alert: null,
     };
   }
 
   // Capitalize all appropriate words in a phrase
   capitalizePhrase(str) {
     // regEx to prevent incorrect capitalization
-    const regEx = /(and|the)/gi;
+    const regExWords = /(and|the|tsp|oz)/gi;
     return (
       str
         // Trim and split string into array of words
         .trim()
         .split(' ')
         /* Only capitalize first word and longer words, also using regEx
-        to prevent incorrectly capitalizing 'and' or 'the' */
-        .map((word, i) => (i === 0 || (word.length > 2 && !regEx.test(word))
-          ? (word = word[0].toUpperCase() + word.slice(1))
-          : word))
+        to prevent incorrectly capitalizing certain words */
+        .map(
+        (word, i) =>
+          ((i === 0 && word) || (word.length > 2 && !regExWords.test(word))
+            ? (word = word[0].toUpperCase() + word.slice(1))
+            : word),
+      )
         // Reassemble array of words into one string
         .join(' ')
     );
@@ -49,33 +51,29 @@ class NewRecipe extends React.Component {
         .split(',')
         // Capitalize each phrase in array
         .map(phrase => this.capitalizePhrase(phrase))
+        // Remove empty entires
+        .filter(phrase => phrase.length)
     );
   }
 
-  // Show an alert for 3 seconds
-  showAlert(msg = 'Please enter a valid recipe name and ingredients.') {
-    this.setState({
-      alert: (
-        <div>
-          <br />
-          <Alert bsStyle="danger">
-            <strong>Oops! </strong>{msg}
-          </Alert>
-        </div>
-      ),
-    });
-    setTimeout(() => this.setState({ alert: null }), 3000);
+  // Check for valid input (called by validateName and validateIngredients)
+  validInput(str) {
+    const regExLetters = /[a-z]/gi;
+    const regExChars = /[<>{}`\\]/gi;
+    return !str.length || (regExLetters.test(str) && !regExChars.test(str));
   }
 
   // Validate recipe name input field
   validateName() {
-    return this.state.newName.length > 60 ? 'error' : null;
+    const name = this.state.newName;
+    return !this.validInput(name) || name.length > 80 ? 'error' : null;
   }
 
   // Validate recipe ingredients input field
   validateIngredients() {
     const ingredients = this.state.newIngredients;
-    return ingredients.length > 500 ||
+    return !this.validInput(ingredients) ||
+      ingredients.length > 500 ||
       (ingredients.length > 10 &&
         ingredients.includes(' ') &&
         !ingredients.includes(','))
@@ -92,7 +90,7 @@ class NewRecipe extends React.Component {
       !this.state.newName.trim().length ||
       !this.state.newIngredients.trim().length
     ) {
-      return this.showAlert();
+      return this.props.onAlert();
     }
 
     // Format new recipe
@@ -102,13 +100,19 @@ class NewRecipe extends React.Component {
       JSON.parse(localStorage.getItem('rvrvrv-recipes')) || {};
     // Check if new recipe already exists
     if (currentRecipes.hasOwnProperty(newRecipe)) {
-      return this.showAlert(`A recipe for ${newRecipe} already exists.`);
+      return this.props.onAlert(`A recipe for ${newRecipe} already exists.`);
     }
     // If recipe is truly new, add it to the list
     currentRecipes[newRecipe] = this.extractWords(this.state.newIngredients);
     // Update localStorage and state of parent
     localStorage.setItem('rvrvrv-recipes', JSON.stringify(currentRecipes));
     this.props.onSave();
+    // Clear form and alert user of successful save
+    this.setState({ newName: '', newIngredients: '' });
+    this.props.onAlert(
+      `Your recipe for ${newRecipe} has been saved.`,
+      'success',
+    );
   }
 
   handleNameChange(e) {
@@ -122,7 +126,7 @@ class NewRecipe extends React.Component {
   render() {
     return (
       <div>
-        <form>
+        <form style={{ marginTop: 10 }}>
           <FormGroup controlId="name" validationState={this.validateName()}>
             <ControlLabel>Recipe for:</ControlLabel>
             <FormControl
@@ -146,7 +150,6 @@ class NewRecipe extends React.Component {
           <Button bsStyle="success" onClick={this.saveRecipe.bind(this)}>
             Save
           </Button>
-          {this.state.alert}
         </form>
       </div>
     );
@@ -179,23 +182,30 @@ class RecipeBody extends React.Component {
     const currentRecipes = JSON.parse(localStorage.getItem('rvrvrv-recipes'));
     // Delete the recipe
     delete currentRecipes[this.props.name];
-    // Update localStorage and state of parent
+    // Update localStorage
     localStorage.setItem('rvrvrv-recipes', JSON.stringify(currentRecipes));
+    // Update parent state
     this.props.onSave();
-    // Close the modal
+    // Close the modal and notify the user
     this.closeModal({ target: { value: 'deleteModal' } });
+    this.props.onAlert(
+      `The recipe for ${this.props.name} has been deleted.`,
+      'success',
+    );
+    // Switch to the add-recipe tab
+    this.props.onChangeTab('add-recipe');
   }
 
   render() {
     // Generate list of ingredients
-    const ingredientList = this.props.ingredients.map(item => (
-      <ListGroupItem
+    const ingredientList = this.props.ingredients.map(item =>
+      (<ListGroupItem
         href={`https://google.com/search?q=${item}`}
         target="_blank"
       >
         {item}
-      </ListGroupItem>
-    ));
+      </ListGroupItem>),
+    );
 
     return (
       <div>
@@ -215,7 +225,6 @@ class RecipeBody extends React.Component {
         <Modal
           show={this.state.deleteModal}
           onHide={this.closeModal.bind(this)}
-
         >
           <Modal.Header>
             <Modal.Title id="contained-modal-title">
@@ -226,7 +235,11 @@ class RecipeBody extends React.Component {
             Are you sure you want to remove the recipe for {this.props.name}?
           </Modal.Body>
           <Modal.Footer>
-            <Button onClick={this.deleteRecipe.bind(this)} value="deleteModal" bsStyle="danger">
+            <Button
+              onClick={this.deleteRecipe.bind(this)}
+              value="deleteModal"
+              bsStyle="danger"
+            >
               Yes, remove it
             </Button>
             <Button onClick={this.closeModal.bind(this)} value="deleteModal">
@@ -240,29 +253,72 @@ class RecipeBody extends React.Component {
 }
 
 class RecipeBook extends React.Component {
+  constructor() {
+    super();
+    this.state = {
+      alert: null,
+      key: 'add-recipe',
+    };
+  }
+
+  // Change the active tab (via the key)
+  handleSelect(key) {
+    this.setState({ key });
+  }
+
+  // Display an alert for 3 seconds
+  showAlert(
+    msg = 'Please enter a valid recipe name and ingredients.',
+    style = 'danger',
+  ) {
+    this.setState({
+      alert: (
+        <Alert bsStyle={style}>
+          <strong>
+            {(style === 'danger' && 'Oops!') || 'Success!'}
+            {' '}
+          </strong>
+          {msg}
+        </Alert>
+      ),
+    });
+    setTimeout(() => this.setState({ alert: null }), 3000);
+  }
+
   // Generate tabs in recipe book
   recipeTabs() {
-    return Object.keys(this.props.recipes).map((item, i) => (
-      <Tab eventKey={item} title={item}>
+    return Object.keys(this.props.recipes).map((item, i) =>
+      (<Tab eventKey={item} title={item}>
         <RecipeBody
           name={item}
           ingredients={this.props.recipes[item]}
+          onAlert={this.showAlert.bind(this)}
+          onChangeTab={this.handleSelect.bind(this)}
           onSave={this.props.onSave.bind(this)}
         />
-      </Tab>
-    ));
+      </Tab>),
+    );
   }
 
   render() {
     return (
-      <Well>
-        <Tabs defaultActiveKey="Salad">
-          {this.recipeTabs()}
-          <Tab eventKey="add-recipe" title="Add a Recipe">
-            <NewRecipe onSave={this.props.onSave.bind(this)} />
-          </Tab>
-        </Tabs>
-      </Well>
+      <div>
+        <Well>
+          <Tabs
+            activeKey={this.state.key}
+            onSelect={this.handleSelect.bind(this)}
+          >
+            {this.recipeTabs()}
+            <Tab eventKey="add-recipe" title="Add a Recipe">
+              <NewRecipe
+                onAlert={this.showAlert.bind(this)}
+                onSave={this.props.onSave.bind(this)}
+              />
+            </Tab>
+          </Tabs>
+        </Well>
+        {this.state.alert}
+      </div>
     );
   }
 }
@@ -271,11 +327,26 @@ class RecipeContainer extends React.Component {
   constructor() {
     super();
     const sampleRecipes = {
-      Salad: ['Lettuce', 'Carrots', 'Minced Garlic', 'Oil and Vinegar'],
-      'Hot Dog': ['Meat', 'Buns', 'Ketchup', 'Celery Salt'],
+      'Green Smoothie': [
+        '1 Handful Spinach',
+        '1 Frozen Banana',
+        '½ Small Avocado',
+        '¼ Cup Unsweetened Almond Milk',
+        '½ tsp. Cinnamon',
+      ],
+      'Hot Cocoa': [
+        '2 Tbsp. Unsweetened Cocoa Powder',
+        '1½ Tbsp. Sugar',
+        'Pinch of Salt',
+        '1 Cup of Milk',
+        '¼ tsp. Vanilla Extract',
+      ],
     };
     // First, check for saved recipes. If none exist, load samples.
-    if (!localStorage.getItem('rvrvrv-recipes') || localStorage.getItem('rvrvrv-recipes') === '{}') {
+    if (
+      !localStorage.getItem('rvrvrv-recipes') ||
+      localStorage.getItem('rvrvrv-recipes') === '{}'
+    ) {
       localStorage.setItem('rvrvrv-recipes', JSON.stringify(sampleRecipes));
     }
 
