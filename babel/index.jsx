@@ -13,12 +13,22 @@ const {
 } = ReactBootstrap;
 
 class NewRecipe extends React.Component {
-  constructor() {
-    super();
+  constructor(props) {
+    super(props);
     this.state = {
       newName: '',
       newIngredients: '',
     };
+  }
+
+  // Automatically populate fields when editing a recipe
+  componentWillReceiveProps(nextProps) {
+    if (nextProps.editing) {
+      this.setState({
+        newName: nextProps.editing.name,
+        newIngredients: nextProps.editing.ingredients.join(', '),
+      });
+    }
   }
 
   // Capitalize all appropriate words in a phrase
@@ -98,11 +108,11 @@ class NewRecipe extends React.Component {
     // Get current recipes from localStorage
     const currentRecipes =
       JSON.parse(localStorage.getItem('rvrvrv-recipes')) || {};
-    // Check if new recipe already exists
-    if (currentRecipes.hasOwnProperty(newRecipe)) {
+    // Check if new recipe already exists (when not editing a recipe)
+    if (currentRecipes.hasOwnProperty(newRecipe) && !this.state.editing) {
       return this.props.onAlert(`A recipe for ${newRecipe} already exists.`);
     }
-    // If recipe is truly new, add it to the list
+    // Add new/edited recipe to the list
     currentRecipes[newRecipe] = this.extractWords(this.state.newIngredients);
     // Update localStorage and state of parent
     localStorage.setItem('rvrvrv-recipes', JSON.stringify(currentRecipes));
@@ -162,18 +172,22 @@ class RecipeBody extends React.Component {
     super();
     this.state = {
       deleteModal: false,
-      editModal: false,
     };
   }
 
-  // Open the edit or delete modal
+  // Open the delete modal
   openModal(e) {
     this.setState({ [e.target.value]: true });
   }
 
-  // Close the edit or delete modal
+  // Close the delete modal
   closeModal(e) {
     this.setState({ [e.target.value]: false });
+  }
+
+  // Load the add-recipe tab with the current recipe
+  editRecipe() {
+    this.props.onEdit(this.props.name, this.props.ingredients);
   }
 
   // Delete the recipe
@@ -214,7 +228,7 @@ class RecipeBody extends React.Component {
           {ingredientList}
         </ListGroup>
         <div className="text-center">
-          <Button onClick={this.openModal.bind(this)} value="editModal">
+          <Button onClick={this.editRecipe.bind(this)}>
             Edit Recipe
           </Button>
           {' '}
@@ -222,6 +236,7 @@ class RecipeBody extends React.Component {
             Remove Recipe
           </Button>
         </div>
+        {/*Delete recipe modal */}
         <Modal
           show={this.state.deleteModal}
           onHide={this.closeModal.bind(this)}
@@ -257,6 +272,7 @@ class RecipeBook extends React.Component {
     super();
     this.state = {
       alert: null,
+      editing: null,
       key: 'add-recipe',
     };
   }
@@ -264,6 +280,18 @@ class RecipeBook extends React.Component {
   // Change the active tab (via the key)
   handleSelect(key) {
     this.setState({ key });
+  }
+
+  // Populate the add-recipe fields for editing
+  handleEdit(name, ingredients) {
+    this.setState({
+      editing: {
+        name,
+        ingredients,
+      },
+    });
+    // Switch to the add-recipe tab
+    this.handleSelect('add-recipe');
   }
 
   // Display an alert for 3 seconds
@@ -293,6 +321,7 @@ class RecipeBook extends React.Component {
           name={item}
           ingredients={this.props.recipes[item]}
           onAlert={this.showAlert.bind(this)}
+          onEdit={this.handleEdit.bind(this)}
           onChangeTab={this.handleSelect.bind(this)}
           onSave={this.props.onSave.bind(this)}
         />
@@ -313,6 +342,7 @@ class RecipeBook extends React.Component {
               <NewRecipe
                 onAlert={this.showAlert.bind(this)}
                 onSave={this.props.onSave.bind(this)}
+                editing={this.state.editing}
               />
             </Tab>
           </Tabs>
@@ -323,7 +353,7 @@ class RecipeBook extends React.Component {
   }
 }
 
-class RecipeContainer extends React.Component {
+class RecipeBookContainer extends React.Component {
   constructor() {
     super();
     const sampleRecipes = {
@@ -380,7 +410,7 @@ class App extends React.Component {
         <h1 className="text-center text-success">
           <i className="fa fa-cutlery" aria-hidden="true" /><br />Recipe Book
         </h1>
-        <RecipeContainer />
+        <RecipeBookContainer />
       </div>
     );
   }
