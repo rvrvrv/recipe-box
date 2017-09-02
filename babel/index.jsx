@@ -45,11 +45,11 @@ class NewRecipe extends React.Component {
         /* Only capitalize first word and longer words, also using regEx
         to prevent incorrectly capitalizing certain words */
         .map(
-        (word, i) =>
-          ((i === 0 && word) || (word.length > 2 && !regExWords.test(word))
-            ? (word = word[0].toUpperCase() + word.slice(1))
-            : word),
-      )
+          (word, i) =>
+            ((i === 0 && word) || (word.length > 2 && !regExWords.test(word))
+              ? (word = word[0].toUpperCase() + word.slice(1))
+              : word),
+        )
         // Reassemble array of words into one string
         .join(' ')
     );
