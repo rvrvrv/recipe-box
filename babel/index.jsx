@@ -96,7 +96,10 @@ class NewRecipe extends React.Component {
   // Cancel potential edits
   cancelEdit() {
     // Reset state to clear the form (delayed to prevent flicker)
-    setTimeout(() => this.setState({ newName: '', newIngredients: '', editing: null }), 500);
+    setTimeout(
+      () => this.setState({ newName: '', newIngredients: '', editing: null }),
+      500,
+    );
     // Exit editing mode in parent, which will reactivate disabled tabs
     this.props.onExitEditing();
   }
@@ -125,19 +128,17 @@ class NewRecipe extends React.Component {
     currentRecipes[newRecipe] = this.extractWords(this.state.newIngredients);
     // Update localStorage and state of parent
     localStorage.setItem('rvrvrv-recipes', JSON.stringify(currentRecipes));
+    this.props.onSave();
     // If editing a recipe, exit edit mode
     if (this.state.editing) this.props.onExitEditing();
-    // If saving a new recipe, perform save and switch to new tab
-    else {
-      this.props.onSave();
-      this.props.onChangeTab(newRecipe);
-    }
-    // Clear form and alert user of successful save
-    this.setState({ newName: '', newIngredients: '', editing: null });
+    // If saving a new recipe, switch to newly created tab
+    this.props.onChangeTab(newRecipe);
+    // Alert user of successful save/edit, and restore initial state
     this.props.onAlert(
-      `Your recipe for ${newRecipe} has been saved.`,
+      `Your recipe for ${newRecipe} has been ${this.state.editing ? 'updated' : 'saved'}.`,
       'success',
     );
+    this.setState({ newName: '', newIngredients: '', editing: null });
   }
 
   handleNameChange(e) {
@@ -178,8 +179,7 @@ class NewRecipe extends React.Component {
           {this.props.editing &&
             <Button onClick={this.cancelEdit.bind(this)}>
               Cancel Changes
-            </Button>
-          }
+            </Button>}
         </form>
       </div>
     );
@@ -256,7 +256,7 @@ class RecipeBody extends React.Component {
             Remove Recipe
           </Button>
         </div>
-        {/* Delete recipe modal */}
+        {/*Delete recipe modal */}
         <Modal
           show={this.state.deleteModal}
           onHide={this.closeModal.bind(this)}
@@ -331,7 +331,8 @@ class RecipeBook extends React.Component {
       alert: (
         <Alert bsStyle={style}>
           <strong>
-            {(style === 'danger' && 'Oops!') || (style === 'success') && 'Success!'}
+            {(style === 'danger' && 'Oops!') ||
+              (style === 'success' && 'Success!')}
             {' '}
           </strong>
           {msg}
@@ -344,11 +345,7 @@ class RecipeBook extends React.Component {
   // Generate tabs in recipe book
   recipeTabs() {
     return Object.keys(this.props.recipes).map((item, i) =>
-      (<Tab
-        eventKey={item}
-        title={item}
-        disabled={!!this.state.editing}
-      >
+      (<Tab eventKey={item} title={item} disabled={!!this.state.editing}>
         <RecipeBody
           name={item}
           ingredients={this.props.recipes[item]}
@@ -372,7 +369,11 @@ class RecipeBook extends React.Component {
             {this.recipeTabs()}
             <Tab
               eventKey="add-recipe"
-              title={this.state.editing ? `Edit ${this.state.editing.name}` : 'Add a Recipe'}
+              title={
+                this.state.editing
+                  ? `Edit ${this.state.editing.name}`
+                  : 'Add a Recipe'
+              }
             >
               <NewRecipe
                 onAlert={this.showAlert.bind(this)}
