@@ -133,7 +133,7 @@ class NewRecipe extends React.Component {
     if (this.state.editing) this.props.onExitEditing();
     // If saving a new recipe, switch to newly created tab
     this.props.onChangeTab(newRecipe);
-    // Alert user of successful save/edit, and restore initial state
+    // Alert user of successful save/edit and restore initial state
     this.props.onAlert(
       `Your recipe for ${newRecipe} has been ${this.state.editing ? 'updated' : 'saved'}.`,
       'success',
@@ -176,6 +176,7 @@ class NewRecipe extends React.Component {
           <Button bsStyle="success" onClick={this.saveRecipe.bind(this)}>
             Save
           </Button>
+          {' '}
           {this.props.editing &&
             <Button onClick={this.cancelEdit.bind(this)}>
               Cancel Changes
