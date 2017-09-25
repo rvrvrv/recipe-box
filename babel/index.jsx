@@ -13,8 +13,37 @@ const {
 } = ReactBootstrap;
 
 class NewRecipe extends React.Component {
-  constructor(props) {
-    super(props);
+  // Capitalize all appropriate words in a phrase
+  static capitalizePhrase(str) {
+    // regEx to prevent incorrect capitalization
+    const regExWords = /(and|the|tsp|oz)/gi;
+    return (
+      str
+    // Trim and split string into array of words
+        .trim()
+        .split(' ')
+    /* Only capitalize first word and longer words, also using regEx
+        to prevent incorrectly capitalizing certain words */
+        .map(
+          (word, i) =>
+            ((i === 0 && word) || (word.length > 2 && !regExWords.test(word))
+              ? (word = word[0].toUpperCase() + word.slice(1))
+              : word),
+        )
+    // Reassemble array of words into one string
+        .join(' ')
+    );
+  }
+
+  // Check for valid input (called by validateName and validateIngredients)
+  static validInput(str) {
+    const regExLetters = /[a-z]/gi;
+    const regExChars = /[<>{}`\\]/gi;
+    return !str.length || (regExLetters.test(str) && !regExChars.test(str));
+  }
+
+  constructor() {
+    super();
     this.state = {
       newName: '',
       newIngredients: '',
@@ -33,58 +62,27 @@ class NewRecipe extends React.Component {
     }
   }
 
-  // Capitalize all appropriate words in a phrase
-  capitalizePhrase(str) {
-    // regEx to prevent incorrect capitalization
-    const regExWords = /(and|the|tsp|oz)/gi;
-    return (
-      str
-        // Trim and split string into array of words
-        .trim()
-        .split(' ')
-        /* Only capitalize first word and longer words, also using regEx
-        to prevent incorrectly capitalizing certain words */
-        .map(
-          (word, i) =>
-            ((i === 0 && word) || (word.length > 2 && !regExWords.test(word))
-              ? (word = word[0].toUpperCase() + word.slice(1))
-              : word),
-        )
-        // Reassemble array of words into one string
-        .join(' ')
-    );
-  }
-
   // Extract and format comma-separated words into array
-  extractWords(str) {
-    return (
-      str
-        // Split string into array, based on commas
-        .split(',')
-        // Capitalize each phrase in array
-        .map(phrase => this.capitalizePhrase(phrase))
-        // Remove empty entires
-        .filter(phrase => phrase.length)
-    );
-  }
-
-  // Check for valid input (called by validateName and validateIngredients)
-  validInput(str) {
-    const regExLetters = /[a-z]/gi;
-    const regExChars = /[<>{}`\\]/gi;
-    return !str.length || (regExLetters.test(str) && !regExChars.test(str));
-  }
+  extractWords = str => (
+    str
+    // Split string into array, based on commas
+      .split(',')
+    // Capitalize each phrase in array
+      .map(phrase => NewRecipe.capitalizePhrase(phrase))
+    // Remove empty entires
+      .filter(phrase => phrase.length)
+  );
 
   // Validate recipe name input field
   validateName() {
     const name = this.state.newName;
-    return !this.validInput(name) || name.length > 80 ? 'error' : null;
+    return !NewRecipe.validInput(name) || name.length > 80 ? 'error' : null;
   }
 
   // Validate recipe ingredients input field
   validateIngredients() {
     const ingredients = this.state.newIngredients;
-    return !this.validInput(ingredients) ||
+    return !NewRecipe.validInput(ingredients) ||
       ingredients.length > 500 ||
       (ingredients.length > 10 &&
         ingredients.includes(' ') &&
@@ -94,7 +92,7 @@ class NewRecipe extends React.Component {
   }
 
   // Cancel potential edits
-  cancelEdit() {
+  cancelEdit = () => {
     // Reset state to clear the form (delayed to prevent flicker)
     setTimeout(
       () => this.setState({ newName: '', newIngredients: '', editing: null }),
@@ -102,10 +100,10 @@ class NewRecipe extends React.Component {
     );
     // Exit editing mode in parent, which will reactivate disabled tabs
     this.props.onExitEditing();
-  }
+  };
 
   // Format and save recipe in localStorage
-  saveRecipe() {
+  saveRecipe = () => {
     // First, check for invalid/empty fields
     if (
       this.validateName() ||
@@ -116,12 +114,12 @@ class NewRecipe extends React.Component {
       return this.props.onAlert();
     }
     // Format new recipe
-    const newRecipe = this.capitalizePhrase(this.state.newName);
+    const newRecipe = NewRecipe.capitalizePhrase(this.state.newName);
     // Get current recipes from localStorage
     const currentRecipes =
       JSON.parse(localStorage.getItem('rvrvrv-recipes')) || {};
     // Check if new recipe already exists (when not editing a recipe)
-    if (currentRecipes.hasOwnProperty(newRecipe) && !this.state.editing) {
+    if (Object.prototype.hasOwnProperty.call(currentRecipes, newRecipe) && !this.state.editing) {
       return this.props.onAlert(`A recipe for ${newRecipe} already exists.`);
     }
     // Add new/modified recipe to the list
@@ -138,16 +136,12 @@ class NewRecipe extends React.Component {
       `Your recipe for ${newRecipe} has been ${this.state.editing ? 'updated' : 'saved'}.`,
       'success',
     );
-    this.setState({ newName: '', newIngredients: '', editing: null });
-  }
+    return this.setState({ newName: '', newIngredients: '', editing: null });
+  };
 
-  handleNameChange(e) {
-    this.setState({ newName: e.target.value });
-  }
+  handleNameChange = e => this.setState({ newName: e.target.value });
 
-  handleIngredientsChange(e) {
-    this.setState({ newIngredients: e.target.value });
-  }
+  handleIngredientsChange = e => this.setState({ newIngredients: e.target.value });
 
   render() {
     return (
@@ -158,7 +152,7 @@ class NewRecipe extends React.Component {
             <FormControl
               placeholder="Lasagna"
               value={this.state.newName}
-              onChange={this.handleNameChange.bind(this)}
+              onChange={this.handleNameChange}
             />
           </FormGroup>
           <FormGroup
@@ -170,15 +164,15 @@ class NewRecipe extends React.Component {
               componentClass="textarea"
               placeholder="Pasta, Ricotta Cheese, Garlic..."
               value={this.state.newIngredients}
-              onChange={this.handleIngredientsChange.bind(this)}
+              onChange={this.handleIngredientsChange}
             />
           </FormGroup>
-          <Button bsStyle="success" onClick={this.saveRecipe.bind(this)}>
+          <Button bsStyle="success" onClick={this.saveRecipe}>
             Save
           </Button>
           {' '}
           {this.props.editing &&
-            <Button onClick={this.cancelEdit.bind(this)}>
+            <Button onClick={this.cancelEdit}>
               Cancel Changes
             </Button>}
         </form>
@@ -197,22 +191,16 @@ class RecipeBody extends React.Component {
   }
 
   // Open the delete modal
-  openModal(e) {
-    this.setState({ [e.target.value]: true });
-  }
+  openModal = e => this.setState({ [e.target.value]: true });
 
   // Close the delete modal
-  closeModal(e) {
-    this.setState({ [e.target.value]: false });
-  }
+  closeModal = e => this.setState({ [e.target.value]: false });
 
   // Load the add-recipe tab with the current recipe
-  editRecipe() {
-    this.props.onEdit(this.props.name, this.props.ingredients);
-  }
+  editRecipe = () => this.props.onEdit(this.props.name, this.props.ingredients);
 
   // Delete the recipe
-  deleteRecipe() {
+  deleteRecipe = () => {
     // Get all recipes from localStorage
     const currentRecipes = JSON.parse(localStorage.getItem('rvrvrv-recipes'));
     // Delete the recipe
@@ -229,7 +217,7 @@ class RecipeBody extends React.Component {
     );
     // Switch to the add-recipe tab
     this.props.onChangeTab('add-recipe');
-  }
+  };
 
   render() {
     // Generate list of ingredients
@@ -249,18 +237,18 @@ class RecipeBody extends React.Component {
           {ingredientList}
         </ListGroup>
         <div className="text-center">
-          <Button onClick={this.editRecipe.bind(this)}>
+          <Button onClick={this.editRecipe}>
             Edit Recipe
           </Button>
           {' '}
-          <Button onClick={this.openModal.bind(this)} value="deleteModal">
+          <Button onClick={this.openModal} value="deleteModal">
             Remove Recipe
           </Button>
         </div>
-        {/*Delete recipe modal */}
+        {/* Delete recipe modal */}
         <Modal
           show={this.state.deleteModal}
-          onHide={this.closeModal.bind(this)}
+          onHide={this.closeModal}
         >
           <Modal.Header>
             <Modal.Title id="contained-modal-title">
@@ -272,13 +260,13 @@ class RecipeBody extends React.Component {
           </Modal.Body>
           <Modal.Footer>
             <Button
-              onClick={this.deleteRecipe.bind(this)}
+              onClick={this.deleteRecipe}
               value="deleteModal"
               bsStyle="danger"
             >
               Yes, remove it
             </Button>
-            <Button onClick={this.closeModal.bind(this)} value="deleteModal">
+            <Button onClick={this.closeModal} value="deleteModal">
               No
             </Button>
           </Modal.Footer>
@@ -288,7 +276,7 @@ class RecipeBody extends React.Component {
   }
 }
 
-class RecipeBook extends React.Component {
+class RecipeBox extends React.Component {
   constructor() {
     super();
     this.state = {
@@ -299,12 +287,10 @@ class RecipeBook extends React.Component {
   }
 
   // Change the active tab (via the key)
-  handleSelect(key) {
-    this.setState({ key });
-  }
+  handleSelect = key => this.setState({ key });
 
   // Populate the add-recipe fields for editing
-  handleEdit(name, ingredients) {
+  handleEdit = (name, ingredients) => {
     this.setState({
       editing: {
         name,
@@ -313,21 +299,18 @@ class RecipeBook extends React.Component {
     });
     // Switch to the add-recipe tab
     this.handleSelect('add-recipe');
-  }
+  };
 
   // Exit editing mode
-  handleExitEditing() {
+  handleExitEditing = () => {
     // Switch back to the chosen recipe tab
     this.handleSelect(this.state.editing.name);
     // Exit editing mode
     this.setState({ editing: null });
-  }
+  };
 
   // Display an alert for 3 seconds
-  showAlert(
-    msg = 'Please enter a valid recipe name and ingredients.',
-    style = 'danger',
-  ) {
+  showAlert = (msg = 'Please enter a valid recipe name and ingredients.', style = 'danger') => {
     this.setState({
       alert: (
         <Alert bsStyle={style}>
@@ -341,23 +324,20 @@ class RecipeBook extends React.Component {
       ),
     });
     setTimeout(() => this.setState({ alert: null }), 3000);
-  }
+  };
 
-  // Generate tabs in recipe book
-  recipeTabs() {
-    return Object.keys(this.props.recipes).map((item, i) =>
-      (<Tab eventKey={item} title={item} disabled={!!this.state.editing}>
-        <RecipeBody
-          name={item}
-          ingredients={this.props.recipes[item]}
-          onAlert={this.showAlert.bind(this)}
-          onEdit={this.handleEdit.bind(this)}
-          onChangeTab={this.handleSelect.bind(this)}
-          onSave={this.props.onSave.bind(this)}
-        />
-      </Tab>),
-    );
-  }
+  // Generate tabs in recipe box
+  recipeTabs = () => Object.keys(this.props.recipes).map((item, i) =>
+    (<Tab eventKey={item} title={item} disabled={!!this.state.editing}>
+      <RecipeBody
+        name={item}
+        ingredients={this.props.recipes[item]}
+        onAlert={this.showAlert}
+        onEdit={this.handleEdit}
+        onChangeTab={this.handleSelect}
+        onSave={this.props.onSave}
+      />
+    </Tab>));
 
   render() {
     return (
@@ -365,7 +345,7 @@ class RecipeBook extends React.Component {
         <Well>
           <Tabs
             activeKey={this.state.key}
-            onSelect={this.handleSelect.bind(this)}
+            onSelect={this.handleSelect}
           >
             {this.recipeTabs()}
             <Tab
@@ -377,10 +357,10 @@ class RecipeBook extends React.Component {
               }
             >
               <NewRecipe
-                onAlert={this.showAlert.bind(this)}
-                onChangeTab={this.handleSelect.bind(this)}
-                onSave={this.props.onSave.bind(this)}
-                onExitEditing={this.handleExitEditing.bind(this)}
+                onAlert={this.showAlert}
+                onChangeTab={this.handleSelect}
+                onSave={this.props.onSave}
+                onExitEditing={this.handleExitEditing}
                 editing={this.state.editing}
               />
             </Tab>
@@ -392,7 +372,7 @@ class RecipeBook extends React.Component {
   }
 }
 
-class RecipeBookContainer extends React.Component {
+class RecipeBoxContainer extends React.Component {
   constructor() {
     super();
     const sampleRecipes = {
@@ -424,34 +404,26 @@ class RecipeBookContainer extends React.Component {
     };
   }
 
-  // Update recipes
-  updateRecipes() {
-    this.setState({
-      recipes: JSON.parse(localStorage.getItem('rvrvrv-recipes')),
-    });
-  }
+  // Update recipes in state from localStorage
+  updateRecipes = () => this.setState({ recipes: JSON.parse(localStorage.getItem('rvrvrv-recipes')) });
 
   render() {
     return (
-      <RecipeBook
+      <RecipeBox
         recipes={this.state.recipes}
-        onSave={this.updateRecipes.bind(this)}
+        onSave={this.updateRecipes}
       />
     );
   }
 }
 
-class App extends React.Component {
-  render() {
-    return (
-      <div className="container">
-        <h1 className="text-center text-success">
-          <i className="fa fa-cutlery" aria-hidden="true" /><br />Recipe Book
-        </h1>
-        <RecipeBookContainer />
-      </div>
-    );
-  }
-}
+const App = () => (
+  <div className="container">
+    <h1 className="text-center text-success">
+      <i className="fa fa-cutlery" aria-hidden="true" /><br />Recipe Box
+    </h1>
+    <RecipeBoxContainer />
+  </div>
+);
 
 ReactDOM.render(<App />, document.getElementById('app'));
