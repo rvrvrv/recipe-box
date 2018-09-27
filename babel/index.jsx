@@ -153,6 +153,10 @@ class NewRecipe extends React.Component {
               placeholder="Lasagna"
               value={this.state.newName}
               onChange={this.handleNameChange}
+              style={{
+                backgroundColor: "#222",
+                color: "#ded"
+              }}
             />
           </FormGroup>
           <FormGroup
@@ -165,6 +169,11 @@ class NewRecipe extends React.Component {
               placeholder="Pasta, Ricotta Cheese, Garlic..."
               value={this.state.newIngredients}
               onChange={this.handleIngredientsChange}
+              style={{
+                backgroundColor: "#222",
+                color: "#ded",
+                resize: "none"
+              }}
             />
           </FormGroup>
           <Button bsStyle="success" onClick={this.saveRecipe}>
